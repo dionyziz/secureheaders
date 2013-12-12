@@ -355,6 +355,76 @@ module SecureHeaders
           fake_params.should == {:script_nonce => 'something'}
         end
       end
+
+      context "script nonce" do
+        let(:options) {
+          default_opts.merge({
+            :inline_script_protection => :nonce
+          })
+        }
+
+        it "generates a nonce and uses it" do
+          tag = secure_script_tag 'console.log("HI MOM");'
+
+          doc = Nokogiri::HTML(tag)
+          nonce = doc.css('script')[0].attr('nonce')
+
+          nonce should_not be_blank
+
+          csp.value.should match ("nonce-" + nonce)
+        end
+
+        it "generates a different nonce for every tag" do
+          tag1 = secure_script_tag 'console.log("HI MOM");'
+          tag2 = secure_script_tag 'console.log("HI MOM!");'
+
+          doc1 = Nokogiri::HTML(tag1)
+          nonce1 = doc1.css('script')[0].attr('nonce')
+
+          doc2 = Nokogiri::HTML(tag2)
+          nonce2 = doc2.css('script')[0].attr('nonce')
+
+          nonce1.should_not == nonce2
+        end
+      end
+
+      context "script hash" do
+        let(:options) {
+          default_opts.merge({
+            :inline_script_protection => {
+              :type => :hash,
+              :hash => :sha1,
+              :dynamic => true
+            }
+          })
+        }
+
+        SHA1 = "Dc7Tgv6fVgVRyiVSxu0sa2FdASY="
+        SHA256 = "PzWOqD4NPIW+2YPtNxGEZPSM284Itu+wTXjAxc6npgA="
+        SHA384 = "ThHQHtt+CjYeuuvK21PKJNFXjr1/U8Qr/8fEO7jrHNR1LbsAKm4JHylb2AQmXlW6"
+
+        it "supports dynamic sha1" do
+          secure_script_tag 'console.log("HI MOM");'
+
+          csp.value.should match ("sha1-" + SHA1)
+        end
+
+        it "supports dynamic sha256" do
+          option[:inline_script_protection][:hash] = :sha256
+
+          secure_script_tag 'console.log("HI MOM");'
+
+          csp.value.should match ("sha256-" + SHA256)
+        end
+
+        it "supports dynamic sha384" do
+          option[:inline_script_protection][:hash] = :sha384
+
+          secure_script_tag 'console.log("HI MOM");'
+
+          csp.value.should match ("sha384-" + SHA384)
+        end
+      end
     end
   end
 end

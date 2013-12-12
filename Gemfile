@@ -17,4 +17,5 @@ group :test do
   gem 'simplecov'
   gem 'debugger', :platform => :ruby_19
   gem 'ruby-debug', :platform => :ruby_18
+  gem 'nokogiri'
 end

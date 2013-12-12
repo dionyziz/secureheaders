@@ -1,3 +1,14 @@
+module ActionView
+  module Helpers
+    module JavaScriptHelper
+      def secure_javascript_tag(content_or_options_with_block = nil, html_options = {}, &block)
+        script_contents = javascript_tag(content_or_options_with_block, html_options, &block)
+        script_contents
+      end
+    end
+  end
+end
+
 module SecureHeaders
   module Configuration
     class << self

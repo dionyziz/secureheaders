@@ -59,7 +59,6 @@ module SecureHeaders
       end
 
       @report_uri = @config.delete(:report_uri)
-      @script_nonce = @config.delete(:script_nonce)
 
       normalize_csp_options
       normalize_reporting_endpoint
@@ -86,14 +85,15 @@ module SecureHeaders
     private
 
     def build_value
+      puts(@config)
+
       raise "Expected to find default_src directive value" unless @config[:default_src]
       append_http_additions unless ssl_request?
       header_value = [
         # ensure default-src is first
         build_directive(:default_src),
         generic_directives(@config),
-        report_uri_directive,
-        script_nonce_directive,
+        report_uri_directive
       ].join
 
       #store the value for next time
@@ -126,7 +126,9 @@ module SecureHeaders
       @config.each do |k,v|
         @config[k] = v.split if v.is_a? String
         @config[k] = @config[k].map do |val|
-          translate_dir_value(val)
+          if DIRECTIVES.include?(k)
+            translate_dir_value(val)
+          end
         end
       end
     end
@@ -180,19 +182,10 @@ module SecureHeaders
       "report-uri #{@report_uri};"
     end
 
-    def script_nonce_directive
-      return '' if @script_nonce.nil?
-      nonce_value = if @script_nonce.is_a?(String)
-                      @script_nonce
-                    elsif @controller
-                      @controller.instance_exec(&@script_nonce)
-                    else
-                      @script_nonce.call
-                    end
-      "script-nonce #{nonce_value};"
-    end
-
     def generic_directives(config)
+      puts('Building header for generic_directives with config: ')
+      puts(config)
+
       header_value = ''
       if config[:img_src]
         config[:img_src] = config[:img_src] + ['data:'] unless config[:img_src].include?('data:')
@@ -200,8 +193,20 @@ module SecureHeaders
         config[:img_src] = ['data:']
       end
 
+      if config[:inline_script_protection]
+        script_hashes = "'sha1-Dc7Tgv6fVgVRyiVSxu0sa2FdASY='"
+        if not config[:script_src]
+          config[:script_src] = DEFAULT_SCRIPT_SRC
+        end
+        config[:script_src] += ' ' + script_hashes
+      end
+
       config.keys.sort_by{|k| k.to_s}.each do |k| # ensure consistent ordering
-        header_value += build_directive(k)
+        puts(DIRECTIVES)
+
+        if DIRECTIVES.include?(k)
+          header_value += build_directive(k)
+        end
       end
 
       header_value
